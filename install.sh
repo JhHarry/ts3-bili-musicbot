@@ -224,9 +224,10 @@ systemctl reset-failed teamspeak3 2>/dev/null || true
 TS3_START_TS=$(date '+%Y-%m-%d %H:%M:%S')
 systemctl restart teamspeak3
 
-# 先等 ServerQuery 端口真的能连上（最多 3 分钟），再去找密码。
+# 先等 ServerQuery 端口真的能连上（最多 5 分钟），再去找密码。
+# 端口一就绪立刻跳出，正常情况下几秒内即可。
 PORT_OK=0
-for _ in $(seq 1 36); do
+for _ in $(seq 1 60); do
     # 子 shell 里打开再随子 shell 退出关闭，不会残留 fd
     if (exec 3<>/dev/tcp/127.0.0.1/"$QUERY_PORT") 2>/dev/null; then
         PORT_OK=1; break
@@ -273,7 +274,7 @@ PYX
 }
 
 QUERY_PASS=""; ADMIN_TOKEN=""; LAST_TRIED=""
-for i in $(seq 1 14); do
+for i in $(seq 1 20); do
     if [ "$i" -le 8 ]; then OUT=$(read_ts3_output); else OUT=$(read_ts3_output_wide); fi
     [ -n "$ADMIN_TOKEN" ] || ADMIN_TOKEN=$(printf '%s\n' "$OUT" | grep -oP 'token=\K\S+' | tail -1)
 
