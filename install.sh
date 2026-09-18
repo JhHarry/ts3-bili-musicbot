@@ -219,7 +219,8 @@ install -m 644 "$DIR/systemd/teamspeak3.service" /etc/systemd/system/
 # 如果这里不换回来，systemd 会报「Failed to determine user credentials」，
 # 服务以 status=217/USER 反复失败重启 —— TS3 永远起不来，凭据也就抓不到。
 # （占位符的通用回填在 7/9 步，但那已经太晚了。）
-sed -i -E "s|^(User|Group)=__RUN_USER__|\1=ts3server|" /etc/systemd/system/teamspeak3.service
+# 注意用 # 作分隔符：模式里有 (User|Group) 的竖线，用 | 当分隔符会被 sed 当成语法错
+sed -i -E "s#^(User|Group)=__RUN_USER__#\1=ts3server#" /etc/systemd/system/teamspeak3.service
 if grep -q '__RUN_USER__' /etc/systemd/system/teamspeak3.service; then
     echo "    ✗ teamspeak3.service 仍残留 __RUN_USER__ 占位符"; exit 1
 fi
