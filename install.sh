@@ -215,11 +215,30 @@ chown -R ts3server:ts3server "$TS3_DIR"
 install -m 644 "$DIR/systemd/teamspeak3.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable teamspeak3 >/dev/null 2>&1
+# ★ 清掉可能存在的启动失败计数。systemd 对反复失败的服务会做退避，
+#   极端情况下 systemctl restart 之后要等一分多钟进程才真正起来 ——
+#   如果这时已经在轮询 journal，就会全程抓不到密码（实测踩过）。
+systemctl reset-failed teamspeak3 2>/dev/null || true
 # ★ 记下启动时刻：journalctl 里会留着【历次安装】的历史，
-#   不限定时间范围就会 grep 到上一次的旧密码，然后误以为抓到了、不再等新密码。
+#   不限定时间范围就会 grep 到上一次的旧密码。
 TS3_START_TS=$(date '+%Y-%m-%d %H:%M:%S')
 systemctl restart teamspeak3
-sleep 12
+
+# 先等 ServerQuery 端口真的能连上（最多 3 分钟），再去找密码。
+PORT_OK=0
+for _ in $(seq 1 36); do
+    # 子 shell 里打开再随子 shell 退出关闭，不会残留 fd
+    if (exec 3<>/dev/tcp/127.0.0.1/"$QUERY_PORT") 2>/dev/null; then
+        PORT_OK=1; break
+    fi
+    sleep 5
+done
+if [ "$PORT_OK" = "1" ]; then
+    echo "    TS3 已就绪（ServerQuery 端口可连）"
+else
+    echo "    ⚠ 等待 ServerQuery 端口超时，仍继续尝试抓取凭据"
+fi
+sleep 3
 
 # 抓取首次生成的 ServerQuery 密码与管理员令牌
 # ⚠ TS3 3.13.7 起这两个【不再写进 logs/ 文件】，而是打到 stdout（systemd 收进 journald）。
