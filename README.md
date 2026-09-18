@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](#)
 
 在全新的 Ubuntu / Debian x86_64 服务器上一键部署 TeamSpeak 3 语音服务器与 B站点歌机器人。
-安装完成后，在频道内发送 `!play 稻香` 即可播放。
+安装完成后，在频道内发送 `!play 歌名` 即可播放。
 
 ---
 
