@@ -448,13 +448,17 @@ sleep 30
 #   ② needed_identity_security_level=8 → 没刷过等级的新人连不上
 #   ③ 服务器名尾随空格 → 客户端书签/排序出怪问题
 #   ④ 服务器密码与 flag_password 不成对设置 → 设了空密码却仍要输密码
-QPW=$(grep -oP 'password\s*=\s*"\K[^"]+' "$TS3_DIR"/logs/ts3server_*.log 2>/dev/null | head -1)
+# 用前面抓到的 $QUERY_PASS（★ 不要再去 grep logs/ ——
+# TS3 3.13.7 起凭据只打到 stdout，logs/ 里没有，那样会永远取不到）
+QPW="$QUERY_PASS"
+[ -n "$QPW" ] || [ -f /opt/ts3bot/query.pw ] && [ -z "$QPW" ] && QPW=$(cat /opt/ts3bot/query.pw 2>/dev/null)
 if [ -n "$QPW" ] && [ -f "$INSTALL_DIR/ts3-serverset.py" ]; then
     TS3_HOST=127.0.0.1 TS3_PASS="$QPW" \
     SV_NAME="$SERVER_NAME" SV_PW="$SERVER_PW" SV_SECLEVEL="$SECLEVEL" \
       python3 "$INSTALL_DIR/ts3-serverset.py" || echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
 else
     echo "    ○ 未取到 ServerQuery 密码，跳过服务器属性校正"
+    echo "      （可稍后手动： TS3_PASS=\$(cat /opt/ts3bot/query.pw) python3 $INSTALL_DIR/ts3-serverset.py）"
 fi
 
 
