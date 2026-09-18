@@ -1,5 +1,12 @@
 # TS3 + B站点歌机器人 · 懒人一键包
 
+[![Release](https://img.shields.io/github/v/release/JhHarry/ts3-bili-musicbot?display_name=tag&sort=semver&color=2ea44f)](https://github.com/JhHarry/ts3-bili-musicbot/releases/latest)
+[![Stars](https://img.shields.io/github/stars/JhHarry/ts3-bili-musicbot?style=flat&color=f9c513)](https://github.com/JhHarry/ts3-bili-musicbot/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%C2%B7%20x86__64-important)](#-系统与配置要求)
+[![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](#)
+[![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](#)
+
 **克隆下来 → 跑一条命令 → 完事。**
 
 在频道里发 `!点歌 稻香` 或 `!play 稻香` 就出声，约 2 秒。
