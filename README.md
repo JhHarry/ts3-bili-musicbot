@@ -1,19 +1,32 @@
-# TS3 + B站点歌机器人 · 懒人一键包
+# TeamSpeak 3 + B站音乐机器人 部署包
 
 [![Release](https://img.shields.io/github/v/release/JhHarry/ts3-bili-musicbot?display_name=tag&sort=semver&color=2ea44f)](https://github.com/JhHarry/ts3-bili-musicbot/releases/latest)
-[![Stars](https://img.shields.io/github/stars/JhHarry/ts3-bili-musicbot?style=flat&color=f9c513)](https://github.com/JhHarry/ts3-bili-musicbot/stargazers)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%C2%B7%20x86__64-important)](#-系统与配置要求)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%C2%B7%20x86__64-important)](#一环境要求)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnubash&logoColor=white)](#)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](#)
 
-**克隆下来 → 跑一条命令 → 完事。**
-
-在频道里发 `!点歌 稻香` 或 `!play 稻香` 就出声，约 2 秒。
+在全新的 Ubuntu / Debian x86_64 服务器上一键部署 TeamSpeak 3 语音服务器与 B站点歌机器人。
+安装完成后，在频道内发送 `!play 稻香` 即可播放。
 
 ---
 
-## ⚡ 开箱即用（3 条命令）
+## 一、环境要求
+
+| 项目 | 要求 |
+|---|---|
+| 操作系统 | Ubuntu 20.04 / 22.04 / 24.04 / 26.04 LTS，Debian 11 / 12 / 13 |
+| 架构 | **x86_64（amd64）**；不支持 ARM |
+| 权限 | root 或可免密 sudo |
+| 磁盘 | 可用空间 ≥ 2 GB |
+| 内存 | ≥ 1 GB（不足 900 MB 时脚本会自动创建 2 GB swap） |
+| 网络 | 可访问 apt 源；首次安装需可访问 GitHub（下载约 26 MB，仅一次） |
+
+安装脚本会自动安装所需系统依赖，无需预先准备。
+
+---
+
+## 二、安装
 
 ```bash
 git clone https://github.com/JhHarry/ts3-bili-musicbot.git
@@ -21,230 +34,265 @@ cd ts3-bili-musicbot
 sudo bash install.sh
 ```
 
-就这三条。仓库里已经带着 TS3 服务端、yt-dlp、libssl1.1 兼容层（约 29 MB），
-音乐机器人（35~40 MB）由 `install.sh` **自动下载一次** —— 之后的部署都是纯本地。
-
-它会把剩下的全做完：
+安装过程中会询问是否安装 B站点歌机器人：
 
 ```
-✓ 装系统依赖（ffmpeg / sqlite3 / libopus-dev / libsodium23 …）
-✓ 自动补齐音乐机器人（只在第一次，约 35~40 MB）
-✓ 部署 TS3 服务端 + 音乐机器人 + B站音频代理
-✓ 建频道结构、写点歌说明、配好 36 条别名
-✓ 注册开机自启 + 每分钟守护 + 每天自动备份
-✓ 打印连接地址和管理令牌
+是否安装 B站点歌机器人？[Y/n]
 ```
 
-**纯内网 / 无法访问 GitHub 的机器**：把机器人压缩包（`ts3audiobot-patched.tar.xz`）
-手动解压成 `vendor/TS3AudioBot`，`install.sh` 会检测到并跳过下载 —— 全程离线。
+* 直接回车或输入 `y`：安装 TeamSpeak 3 服务端 + 音乐机器人
+* 输入 `n`：仅安装 TeamSpeak 3 服务端（内存占用约 30 MB）
 
-安装时会先问你一句：
+非交互环境（脚本调用、管道）默认安装完整组件。
 
-```
-==> 组件选择
-    本脚本可以只装 TS3 语音服务器，也可以连 B站点歌机器人一起装。
-    是否安装 B站点歌机器人？[Y/n]
-```
+安装完成后，脚本会在**当前目录**与 `/root` 下生成 `TS3-服务器信息.txt`，
+其中包含连接地址、管理员令牌、点歌指令、管理凭据与常用运维命令。
 
-* **回车 / y** → 装全套（TS3 + 点歌机器人）
-* **n** → 只装 TS3 语音服务器（不下载机器人、不装代理、不占内存）
+### 2.1 可配置项
 
-非交互场景（脚本调用、管道）**默认装全套**；也可以用环境变量直接指定，跳过提问：
+通过环境变量覆盖默认值，可跳过交互询问：
 
 ```bash
-sudo WITH_BOT=0 bash install.sh     # 只要 TS3 语音服务器
-sudo WITH_BOT=1 bash install.sh     # 全套（默认）
+sudo WITH_BOT=0 bash install.sh                 # 仅安装 TeamSpeak 3
+sudo SERVER_NAME="我的服务器" bash install.sh    # 自定义服务器名
 ```
 
-其它可调参数：
-
-| 变量 | 默认 | 说明 |
+| 变量 | 默认值 | 说明 |
 |---|---|---|
-| `WITH_BOT` | 提问（非交互时 `1`）| `0` = 只装 TS3；`1` = 装全套 |
-| `BOT_NAME` | `MusicBot🎵Bot` | 机器人昵称（仅装机器人时有效）|
-| `SERVER_NAME` | `My TeamSpeak Server` | 服务器名 |
-| `SERVER_PW` | 空 | 服务器密码；留空 = 不需要密码 |
-| `SECLEVEL` | `5` | 身份安全等级（**别设 8**，新人会连不上）|
-| `BILI_LOGIN` | `0` | 设 `1` 时部署完自动弹扫码登录 |
-| `BACKUP_TARGET` | 空 | 异地冷备仓库地址 |
-| `PRIVATE_PW` | 空 | 私密房间密码 |
+| `WITH_BOT` | 交互询问（非交互时为 1） | `0` 仅安装 TS3；`1` 安装完整组件 |
+| `SERVER_NAME` | `My TeamSpeak Server` | 服务器名称 |
+| `SERVER_PW` | 空 | 服务器密码；留空表示无需密码 |
+| `SECLEVEL` | `5` | 身份安全等级；不建议设为 8 |
+| `BOT_NAME` | `MusicBot🎵Bot` | 机器人昵称（仅在安装机器人时生效） |
+| `PRIVATE_PW` | 空 | 私密频道密码；留空则不加密 |
+| `BILI_LOGIN` | `0` | 设为 `1` 时，安装结束自动进入 B站扫码登录 |
+| `BACKUP_TARGET` | 空 | 异地备份仓库地址，形如 `用户@主机:/var/backups/ts3-from-sh/` |
 
-> 装完之后随时可以补装机器人：`sudo WITH_BOT=1 bash install.sh`（已装的部分会跳过）。
+### 2.2 离线安装
+
+无法访问 GitHub 时，从 Release 下载附件 `ts3audiobot-patched.tar.xz`，
+解压至 `vendor/TS3AudioBot` 后再执行 `install.sh`，安装过程不再联网。
 
 ---
 
-## 📋 系统与配置要求
+## 三、防火墙配置
 
-### 系统
+必须放行以下端口：
 
-| 项目 | 要求 |
-|---|---|
-| **操作系统** | Ubuntu 20.04 / 22.04 / 24.04 / 26.04 LTS，Debian 11 / 12 / 13 |
-| **架构** | **x86_64 / amd64 仅**。ARM（aarch64）**不支持** —— TS3 官方服务端只发布 amd64 二进制 |
-| **权限** | root / sudo 免密 |
-| **网络** | 需要能访问 **apt 源**；**首次安装**还要能访问 GitHub（下载机器人 35~40 MB，之后不再需要）|
-| **实测环境** | Ubuntu 26.04 LTS · 内核 7.0 · 2 核 / 1962 MB · 腾讯云轻量 |
-
-> 脚本会自己检查：架构不对 / 磁盘不够会**直接报错退出**，不会装到一半。
-
-### 机器配置
-
-| 档位 | CPU | 内存 | 磁盘 | 适用 |
-|---|---|---|---|---|
-| **最低** | 1 核 | 1 GB | 3 GB | 自己和小伙伴听歌（≤10 人）|
-| **推荐** | 2 核 | 2 GB | 10 GB | 满员 32 人 |
-
-**实测占用**（上海服务器正在跑的实例）：
-
-| 组件 | 内存 | 磁盘 |
+| 端口 | 协议 | 用途 |
 |---|---|---|
-| TeamSpeak 3 服务端 | ~30 MB | 24 MB |
-| 音乐机器人 TS3AudioBot | ~110 MB（涨到 450 MB 会被守护自动重启）| 104 MB |
-| B站音频代理 | ~95 MB | — |
-| **合计** | **常态 ~250 MB，峰值 ~600 MB** | **~130 MB + 备份** |
+| `9987` | **UDP** | 语音。协议必须选择 UDP，选择 TCP 将无法连接 |
+| `30033` | TCP | 文件传输（头像、频道文件） |
 
-* 内存不足 900 MB 且没有 swap 时，脚本会**自动创建 2 GB swapfile**（不用你管）
-* 备份每次约 76 KB，每天 2 次，自动只保留最近 10 GB
-* 带宽：每个听歌的人约 **12 KB/s**（Opus 98 kbps）→ 10 人约 120 KB/s，满员 32 人约 390 KB/s
-
-### 端口
-
-| 端口 | 协议 | 必须开？ |
-|---|---|---|
-| `9987` | **UDP** | ✅ **必须**（语音）|
-| `30033` | TCP | ✅ 建议（文件传输 / 频道头像）|
-| `10011` | TCP | ❌ **不要开**（ServerQuery 管理口，会被爆破）|
-
----
-
-## ⚠️ 装完必做的一步：开防火墙
-
-在云平台控制台放行：
-
-```
-UDP  9987      ← 语音。【协议一定要选 UDP】，选成 TCP 会完全连不上
-TCP  30033     ← 文件传输
-```
-
-⚠️ 轻量云主机常见坑：**「轻量应用服务器防火墙」和「CVM 安全组」是两个独立的地方**，
-改错地方会表现为"规则明明加了却连不上"。
-
-需要远程管理 ServerQuery 时，走 SSH 隧道（不要开公网）：
+ServerQuery 管理端口 `10011` **不应对外开放**。需要远程管理时使用 SSH 隧道：
 
 ```bash
 ssh -L 10011:127.0.0.1:10011 <用户>@<服务器>
 ```
 
+> 部分云平台（如轻量应用服务器）的「防火墙」与「安全组」是两处独立配置，
+> 需在正确的页面添加规则。
+
 ---
 
-## 🎵 怎么用
+## 四、使用
 
-在**任意频道直接发消息**，不用 @机器人：
+在任意频道内直接发送消息，无需 @机器人。
 
-```
-!点歌 稻香   ·  !play 稻香  ·  !dian 稻香  ·  !bo 稻香     ← 点歌（四种写法都行）
-!play BV1G88y6xEQV  ·  !play https://b23.tv/xxxx          ← 视频号 / 链接
-!play 周杰伦 稻香                                          ← 多个词自动合并搜索
+### 4.1 点歌
 
-!暂停/继续   !停止   !下一首   !上一首                      ← 中文
-!zan !ting !xia !shang                                    ← 拼音
-!当前  !队列  !音量 50  !跳转 90  !单曲  !循环  !随机  !顺序  !帮助
-```
+| 指令 | 说明 |
+|---|---|
+| `!play 稻香` | 按歌名搜索 |
+| `!dian 稻香` / `!bo 稻香` | 拼音简写 |
+| `!点歌 稻香` | 中文别名 |
+| `!play 周杰伦 稻香` | 多个词自动合并为搜索词 |
+| `!play BV1G88y6xEQV` | 按 B站视频号播放 |
+| `!play https://b23.tv/xxxxx` | 粘贴链接播放 |
 
-完整指令表 → [docs/COMMANDS.md](docs/COMMANDS.md)
+### 4.2 播放控制
 
-### 扫码登录 B站（可选）
+| 指令 | 拼音简写 | 作用 |
+|---|---|---|
+| `!pause` | `!zan` | 暂停 / 继续 |
+| `!stop` | `!ting` | 停止并清空队列 |
+| `!next` | `!xia` | 下一首 |
+| `!previous` | `!shang` | 上一首 |
+| `!song` | `!now` | 显示当前曲目 |
+| `!list show` | `!lb` | 显示队列 |
+| `!volume 50` | `!yin 50` | 音量 |
+| `!seek 90` | `!tiao 90` | 跳转至第 90 秒 |
 
-不登录也能点歌，登录后音源档位更好：
+### 4.3 播放模式
+
+| 指令 | 拼音简写 | 作用 |
+|---|---|---|
+| `!repeat one` | `!danqu` | 单曲循环 |
+| `!repeat all` | `!quanbu` | 列表循环 |
+| `!random on` | `!sui` | 随机播放 |
+| `!random off` | `!shun` | 顺序播放 |
+
+`!help`（简写 `!bz`）可列出全部命令。完整说明见 [docs/COMMANDS.md](docs/COMMANDS.md)。
+
+### 4.4 扫码登录 B站（可选）
+
+未登录也可正常点歌，登录后可获得更高音源档位。
 
 ```bash
 sudo -u <运行用户> python3 /opt/ts3bot/bili_login.py
 ```
 
-二维码会**同时**给你两种：
+程序会在终端直接绘制二维码，同时生成图片 `/var/tmp/bili_qr.png`，
+扫码并在手机端确认后即完成登录。二维码由纯 Python 生成，无额外依赖。
 
-```
-（终端里直接画出二维码，手机对着屏幕扫）
-📱 二维码图片：/var/tmp/bili_qr.png     ← 传到手机打开再扫，更稳
-```
-
-不需要装任何二维码库 —— 纯 Python 现画。
-
----
-
-## 🔧 运维常用命令
+校验登录状态：
 
 ```bash
-sudo ts3-backup.sh                 # 立刻备份一次（不停服，76 KB）
-sudo ts3-restore.sh <包>            # 还原（默认 dry-run，加 --yes 才动手）
-sudo ts3-bot.sh status             # 机器人状态
-sudo ts3-bot.sh stop / start       # 开关机器人
-sudo bash /usr/local/bin/audit.sh 1 # 体检
-
-journalctl -u teamspeak3 -n 50     # 看 TS3 日志
-journalctl -u ts3audiobot -n 50    # 看机器人日志
+python3 /opt/ts3bot/bili_login.py --check
 ```
 
-每天 `00:00 / 12:00` 自动热备份 + 推送到异地（需在 `install.sh` 里给 `BACKUP_TARGET`）。
+---
+
+## 五、运维
+
+```bash
+sudo ts3-backup.sh                    # 立即备份（在线进行，无需停服）
+sudo ts3-restore.sh <备份包>           # 还原（默认 dry-run，加 --yes 执行）
+sudo ts3-bot.sh status                # 机器人状态
+sudo ts3-bot.sh stop / start          # 启停机器人
+sudo bash /usr/local/bin/audit.sh 1   # 系统体检
+
+journalctl -u teamspeak3 -n 50        # TS3 日志
+journalctl -u ts3audiobot -n 50       # 机器人日志
+```
+
+系统已配置以下定时任务：
+
+| 任务 | 时间 | 说明 |
+|---|---|---|
+| 热备份 | 每天 00:00 / 12:00 | 备份至 `/var/backups/ts3/`，保留最近 10 GB |
+| 机器人守护 | 每分钟 | 异常自动重启；内存超限时重启并自动续播 |
+| 开机自检 | 开机后 30 秒 | 检查各服务状态，未启动的自动拉起 |
 
 ---
 
-## 🆘 出问题了
+## 六、常见问题
 
-先看 **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** —— 11 类常见故障的"症状 → 原因 → 处理"都在里面，全部来自真机踩坑。
+**Q1. 客户端连接后被立即断开**
 
-最常见的三个：
+服务端属性 `virtualserver_hostmessage_mode` 被设为 `3`，该值的语义是
+「弹出消息后强制断开连接」，会导致所有客户端无法停留。
 
-| 症状 | 一句话解决 |
-|---|---|
-| 客户端一连上就被踢 | `hostmessage_mode` 被设成了 3，本包会自动校正为 1 |
-| 新人连不上，老用户正常 | 身份安全等级被设成 8，本包默认写 5 |
-| 完全连不上、UDP 没反应 | 云防火墙把 9987 建成了 TCP，改成 UDP |
+安装脚本会自动校正为 `1`。若已安装完成仍出现此问题，手动校正：
+
+```bash
+sudo TS3_PASS=$(sudo cat /opt/ts3bot/query.pw) python3 /opt/ts3bot/ts3-serverset.py
+```
+
+**Q2. 新用户无法连接，老用户正常**
+
+身份安全等级 `needed_identity_security_level` 被设为 8，而新客户端默认等级为 5。
+安装脚本默认写入 5。手动校正方式同上。
+
+**Q3. 客户端提示连接超时，服务器端抓不到任何 UDP 数据包**
+
+云平台防火墙将 `9987` 配置成了 TCP。请修改为 **UDP**。
+
+**Q4. 机器人启动失败，提示 `Failed to load library libopus`**
+
+缺少 `libopus-dev`。该软件包提供不带版本号的 `libopus.so` 软链接，仅安装
+`libopus0` 无法满足 .NET 的加载需求。
+
+```bash
+sudo apt-get install -y libopus-dev libopus0 libsodium23
+```
+
+**Q5. 机器人启动失败，提示缺少 `libssl.so.1.1`**
+
+```bash
+sudo cp -a /path/to/repo/vendor/private-libs /opt/ts3bot/private-libs
+sudo systemctl restart ts3audiobot
+```
+
+安装脚本在缺少该文件时会直接终止并报错，不会留下不可用的部署。
+
+**Q6. 点歌没有声音**
+
+依次检查：
+
+```bash
+curl -s http://127.0.0.1:8087/health          # 代理健康检查
+curl -s http://127.0.0.1:8087/status          # 解析与缓存状态
+journalctl -u bili-proxy -n 30 --no-pager
+```
+
+代理仅监听 `127.0.0.1`，外网无法访问属于正常现象。
+
+**Q7. 自定义别名无效**
+
+需注意两点：
+
+1. 别名值必须以 `!` 开头，否则会被解析为普通字符串而非命令；
+2. 转发参数必须使用 `(!param 0)`，直接写 `"!play"` 会丢弃用户输入。
+
+```
+dian = "!play (!param 0)"    # 正确
+dian = "!play"               # 错误，参数被丢弃
+```
+
+此外，别名内部调用的命令（如 `!param`）也需在 `config/rights.toml` 中授权。
+详见 [docs/COMMANDS.md](docs/COMMANDS.md)。
+
+**Q8. 机器人内存持续增长**
+
+TS3AudioBot 上游遗留的内存泄漏（播放时约 4 MB/分钟，空闲约 1.3 MB/分钟）。
+守护进程会在内存超过 450 MB 时自动重启，并在约 5 秒后自动续播，无需人工干预。
+
+**Q9. 搜索结果不是原曲**
+
+代理内置选源逻辑会优先选择原版、高码率音源，并排除翻唱、现场、伴奏与
+MV 音轨。若结果仍不符合预期，建议直接提供 BV 号或链接。
+
+**Q10. 安装失败，提示缺少某条命令**
+
+安装脚本在安装依赖后会执行前置命令自检，缺少的命令会明确列出。按提示补齐即可：
+
+```bash
+sudo apt-get update && sudo apt-get install -y <包名>
+```
+
+更多故障处理见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。
 
 ---
 
-## 📁 目录结构
+## 七、目录结构
 
 ```
 ts3-bili-musicbot/
-├── install.sh              一键部署（跑它就行）
-├── vendor/                 软件本体（约 29 MB，已内置）
-│   ├── teamspeak3-server/  TS3 服务端（已剔除数据库/密钥/日志）
-│   ├── private-libs/       libssl1.1 兼容层
-│   ├── yt-dlp              兜底音源解析
-│   └── TS3AudioBot         ← 不在这里，首次安装时自动下载（97.5 MB，单独走 Release）
-├── fetch-bot.sh            下载音乐机器人（install.sh 会调用）
+├── install.sh              一键部署脚本
+├── fetch-bot.sh            下载机器人二进制（由 install.sh 调用）
 ├── build-vendor.sh         维护用：重新生成 vendor/ 与 Release 附件
-├── config/                 配置模板（含 36 条点歌别名）
-├── scripts/                代理 / 登录 / 备份 / 守护 / 体检 等 17 个脚本
-├── systemd/                开机自启与守护服务
-├── patch-kit/              进阶：自己改机器人源码重编译（普通用户用不到）
-├── docs/                   指令手册 + 排错手册
-├── LICENSE                 MIT（只覆盖自写代码）
-└── THIRD_PARTY_NOTICES.md  第三方组件出处与许可证
+├── config/                 配置模板
+├── scripts/                代理、登录、备份、守护、体检等脚本
+├── systemd/                服务单元
+├── vendor/                 TS3 服务端、yt-dlp、libssl1.1 兼容层
+├── patch-kit/              自编译工具与补丁（进阶）
+└── docs/                   指令手册、排错手册、发布清单
 ```
 
 ---
 
-## 🚀 想自己开源一份？
+## 八、许可与第三方组件
 
-见 **[docs/RELEASE.md](docs/RELEASE.md)** —— 发布清单（改 `repo.conf` → 生成 vendor/ 与附件
-→ 提交 → 建 Release 传附件 → 实测），含自动隐私检查项和常见发布事故。
+本仓库自行编写的代码采用 MIT 许可，详见 [LICENSE](LICENSE)。
 
-**为什么机器人不直接放进 git？** 它是单个 **97.5 MiB** 的文件，GitHub 硬性拦截 100 MiB
-以上的文件 —— 放进去能过但没余量，且每次重编译都会让仓库永久膨胀约 100 MB。
+随包分发的第三方组件各自适用其原始许可，完整清单见
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。其中：
 
----
-
-## 📄 许可与出处
-
-本仓库自写的代码是 **MIT**。
-
-随包分发的组件：TeamSpeak 3 服务端（**私有许可，使用即表示接受其条款**）、
-TS3AudioBot（OSL-3.0）、yt-dlp（Unlicense）、libssl1.1（OpenSSL）、
-pypinyin（MIT）、requests（Apache-2.0）、SQLite（Public Domain）。
-
-**完整出处与许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)**，
-每个脚本头部也标了自己用到哪些组件。
+* **TeamSpeak 3 服务端**为私有许可软件，使用即表示接受其许可条款；
+* TS3AudioBot 采用 OSL-3.0，本包附带的是自行编译并打补丁的衍生版本，
+  补丁源码见 `patch-kit/`；
+* yt-dlp（Unlicense）、libssl1.1（OpenSSL License）、pypinyin（MIT）、
+  requests（Apache-2.0）。
 
 TeamSpeak 是 TeamSpeak Systems GmbH 的商标，本项目与其无任何关联。

@@ -229,14 +229,48 @@ read_ts3_output() {
       journalctl -u teamspeak3 --no-pager --since "${TS3_START_TS:-2 minutes ago}" -n 800 2>/dev/null
     } 2>/dev/null
 }
+# 兜底：不限时间窗，取整个近期 journal（靠下面的登录验证保证不会误用旧密码）
+read_ts3_output_wide() {
+    journalctl -u teamspeak3 --no-pager -n 1500 2>/dev/null
+}
 
-QUERY_PASS=""; ADMIN_TOKEN=""
-for _ in $(seq 1 10); do
-    OUT=$(read_ts3_output)
-    [ -n "$QUERY_PASS" ] || QUERY_PASS=$(printf '%s\n' "$OUT" | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
+# 真正的判据：拿这个密码去 ServerQuery 登一次，登得上才算数。
+# 这样无论 journal 里有多少历史密码，都不会用错。
+ts3_login_test() {
+    TS3_PASS="$1" python3 - <<'PYX' 2>/dev/null
+import os, socket, sys, time
+try:
+    s = socket.socket(); s.settimeout(8); s.connect(("127.0.0.1", 10011)); s.recv(4096)
+    s.send(("login serveradmin %s\n" % os.environ.get("TS3_PASS", "")).encode()); time.sleep(0.5)
+    r = s.recv(65536).decode("utf-8", "ignore")
+    try:
+        s.send(b"quit\n")
+    except Exception:
+        pass
+    sys.exit(0 if "error id=0" in r else 1)
+except Exception:
+    sys.exit(1)
+PYX
+}
+
+QUERY_PASS=""; ADMIN_TOKEN=""; LAST_TRIED=""
+for i in $(seq 1 14); do
+    if [ "$i" -le 8 ]; then OUT=$(read_ts3_output); else OUT=$(read_ts3_output_wide); fi
     [ -n "$ADMIN_TOKEN" ] || ADMIN_TOKEN=$(printf '%s\n' "$OUT" | grep -oP 'token=\K\S+' | tail -1)
-    # 令牌是虚拟服务器建好之后才生成的，比密码晚约 20~30 秒
-    if [ -n "$QUERY_PASS" ] && [ -n "$ADMIN_TOKEN" ]; then break; fi
+
+    if [ -z "$QUERY_PASS" ]; then
+        CAND=$(printf '%s\n' "$OUT" | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
+        # 只在候选变化时试登录，避免连续失败登录触发封禁
+        if [ -n "$CAND" ] && [ "$CAND" != "$LAST_TRIED" ]; then
+            LAST_TRIED="$CAND"
+            if ts3_login_test "$CAND"; then
+                QUERY_PASS="$CAND"
+                echo "    ServerQuery 密码已登录验证通过"
+            fi
+        fi
+    fi
+
+    [ -n "$QUERY_PASS" ] && [ -n "$ADMIN_TOKEN" ] && break
     sleep 5
 done
 
@@ -458,21 +492,8 @@ QPW="$QUERY_PASS"
 if [ -n "$QPW" ] && [ -f "$INSTALL_DIR/ts3-serverset.py" ]; then
     TS3_HOST=127.0.0.1 TS3_PASS="$QPW" \
     SV_NAME="$SERVER_NAME" SV_PW="$SERVER_PW" SV_SECLEVEL="$SECLEVEL" \
-      python3 "$INSTALL_DIR/ts3-serverset.py" && QPW_OK=1 || QPW_OK=0
-    # 万一密码不对（例如抓到了上一次安装的），用「本次启动之后」的 journal 再取一次重试
-    if [ "$QPW_OK" = "0" ]; then
-        QPW2=$(journalctl -u teamspeak3 --no-pager --since "${TS3_START_TS:-5 minutes ago}" 2>/dev/null \
-               | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
-        if [ -n "$QPW2" ] && [ "$QPW2" != "$QPW" ]; then
-            echo "    （用最新抓到的密码重试一次…）"
-            sleep 3
-            TS3_HOST=127.0.0.1 TS3_PASS="$QPW2" \
-            SV_NAME="$SERVER_NAME" SV_PW="$SERVER_PW" SV_SECLEVEL="$SECLEVEL" \
-              python3 "$INSTALL_DIR/ts3-serverset.py" && QPW="$QPW2" || echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
-        else
-            echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
-        fi
-    fi
+      python3 "$INSTALL_DIR/ts3-serverset.py" \
+      || echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
     # 校正成功后，把真正生效的密码写回凭据文件
     if [ -f /root/ts3-credentials.txt ] && [ -n "${QPW2:-}" ] && [ "$QPW" = "$QPW2" ]; then
         sed -i "s|^  ServerQuery 密码: .*|  ServerQuery 密码: $QPW|" /root/ts3-credentials.txt 2>/dev/null || true

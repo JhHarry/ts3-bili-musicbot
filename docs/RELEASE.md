@@ -66,7 +66,7 @@ ts3audiobot-patched.tar.xz   约 35~40 MB  → 传成 Release 附件
 
 ```bash
 git add -A
-git commit -m "v13: 懒人一键包"
+git commit -m "v1.0.0: 首次公开发布"
 git push
 ```
 
@@ -75,15 +75,15 @@ git push
 ## 第 4 步：建 Release，把机器人作为附件上传
 
 ```bash
-gh release create v13 ts3audiobot-patched.tar.xz \
-   --title "v13" --notes-file CHANGELOG.md
+gh release create v1.0.0 ts3audiobot-patched.tar.xz \
+   --title "v1.0.0" --notes-file CHANGELOG.md
 ```
 
-或者网页操作：**Releases → Draft a new release → Tag 填 `v13` →
+或者网页操作：**Releases → Draft a new release → Tag 填 `v1.0.0` →
 把 `ts3audiobot-patched.tar.xz` 拖进附件区 → Publish。**
 
-⚠️ **附件名必须是 `ts3audiobot-patched.tar.xz`**（`fetch-bot.sh` 按这个名字找；
-要改就同时改 `repo.conf` 里的 `BOT_ASSET`）。
+注意：附件名必须为 `ts3audiobot-patched.tar.xz`（`fetch-bot.sh` 按此名称查找）。
+如需更改，请同步修改 `repo.conf` 中的 `BOT_ASSET`。
 
 ---
 
@@ -98,7 +98,7 @@ du -sh .                       # 应该是 29 MB 左右，不是 130 MB
 sudo bash install.sh
 ```
 
-要确认：
+确认以下各项：
 
 - [ ] 打印 `缺少音乐机器人，自动下载（约 35~40 MB，只需一次）`
 - [ ] 下载完成后打印 `软件本体: 3x M 已就位`
