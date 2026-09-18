@@ -1,0 +1,31 @@
+# 机器人二进制走 Release 附件，不进 git（单个 97.5 MB，贴着 GitHub 100 MiB 上限）
+vendor/TS3AudioBot
+vendor/TS3AudioBot.pdb
+ts3audiobot-patched.tar.xz
+
+# 其它压缩产物（vendor/ 里的东西是要提交的，不要排除）
+*.tar.xz
+*.tar.zst
+
+# 部署时才生成的东西（可能含 cookie / 密钥 / IP，绝不能提交）
+bili_cookies.txt
+*.pw
+*.env
+query.pw
+relay.env
+ts3server.sqlitedb*
+ssh_host_rsa_key
+instance-*.toml
+
+# Python
+__pycache__/
+*.pyc
+
+# 编辑器 / 系统
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# 你自己的敏感词清单（见 privacy-denylist.example.txt）
+privacy-denylist.txt

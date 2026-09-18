@@ -1,0 +1,6 @@
+[Unit]
+Description=TS3 music bot watchdog
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ts3bot-watchdog.sh

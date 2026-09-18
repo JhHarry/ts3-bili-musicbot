@@ -1,0 +1,11 @@
+[Unit]
+Description=Push TS3 backup offsite twice daily (00:00 and 12:00)
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+OnCalendar=*-*-* 12:00:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

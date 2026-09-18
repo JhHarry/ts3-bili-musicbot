@@ -1,0 +1,27 @@
+# privacy-denylist.txt 的样例
+#
+# 用法：
+#   cp privacy-denylist.example.txt privacy-denylist.txt
+#   把你自己环境里【绝不能出现在开源包里】的词逐行写进去
+#   bash scripts/privacy-scan.sh . privacy-denylist.txt
+#
+# 这个文件本身已经被 .gitignore 忽略，不会被提交。
+# 每行一个词（子串匹配，区分大小写不敏感），# 开头是注释。
+
+# ── 服务器地址 ──
+203.0.113.10
+198.51.100.25
+my-server.example.com
+
+# ── 服务器名 / 昵称 ──
+我的TS服务器
+MyPrivateServer
+
+# ── 频道名（公开包里不该带任何具体频道结构）──
+大厅
+VIP休息室
+某个特定频道
+
+# ── 其它私人痕迹 ──
+/home/我的用户名
+我的域名.com

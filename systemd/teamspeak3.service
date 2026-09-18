@@ -1,0 +1,14 @@
+[Unit]
+Description=TeamSpeak 3 Server
+After=network.target
+
+[Service]
+User=__RUN_USER__
+Group=__RUN_USER__
+WorkingDirectory=/opt/teamspeak3-server
+ExecStart=/opt/teamspeak3-server/ts3server inifile=ts3server.ini
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

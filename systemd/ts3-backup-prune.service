@@ -1,0 +1,5 @@
+[Unit]
+Description=Prune TS3 cold backup repository (keep newest 10 archives)
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ts3-backup-prune.sh /var/backups/ts3-from-sh 10

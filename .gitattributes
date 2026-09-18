@@ -1,0 +1,13 @@
+# 二进制文件：不让 git 做文本处理，也不要显示 diff
+# （vendor/TS3AudioBot 不在 git 里，走 Release 附件）
+vendor/yt-dlp             binary
+vendor/private-libs/**    binary
+vendor/teamspeak3-server/** binary
+
+# 脚本统一 LF，避免在不同系统上 clone 后出现 CRLF 导致 shebang 失效
+*.sh      text eol=lf
+*.py      text eol=lf
+*.toml    text eol=lf
+*.service text eol=lf
+*.timer   text eol=lf
+*.conf    text eol=lf

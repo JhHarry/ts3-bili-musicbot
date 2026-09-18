@@ -1,0 +1,65 @@
+name: checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell 语法检查
+        run: |
+          fail=0
+          for f in $(find . -name '*.sh' -not -path './vendor/*'); do
+            bash -n "$f" && echo "OK   $f" || { echo "FAIL $f"; fail=1; }
+          done
+          exit $fail
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Python 语法检查
+        run: |
+          fail=0
+          for f in $(find . -name '*.py' -not -path './vendor/*'); do
+            python3 -m py_compile "$f" && echo "OK   $f" || { echo "FAIL $f"; fail=1; }
+          done
+          find . -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+          exit $fail
+
+      - name: 二维码生成器回归测试
+        run: |
+          python3 - <<'EOF'
+          import sys, subprocess
+          sys.path.insert(0, 'scripts')
+          import qrmini
+          tests = [
+              "HELLO WORLD",
+              "https://passport.bilibili.com/h5-app/passport/login/scan?navhide=1&qrcode_key=abcdef1234567890",
+              "x", "1", "A"*300, "A"*700,
+              "https://www.bilibili.com/h5/login?qrcode_key=1234567890abcdef1234567890abcdef",
+          ]
+          for lvl in ("L", "M", "Q", "H"):
+              for t in tests:
+                  m, ver = qrmini.make_matrix(t, lvl)
+                  qrmini.write_png(m, "/tmp/q.png", scale=4, border=4)
+                  r = subprocess.run(["zbarimg", "-q", "--raw", "-1", "/tmp/q.png"],
+                                     capture_output=True, text=True)
+                  if r.stdout.rstrip("\n") != t:
+                      raise SystemExit("解码失败: %r (level %s)" % (t, lvl))
+          print("二维码回归测试全部通过 ✅")
+          EOF
+
+      - name: 语法检查 build-vendor.sh
+        run: bash -n build-vendor.sh
+
+      - name: 仓库里不应出现敏感文件
+        run: |
+          bad=$(git ls-files | grep -E 'bili_cookies\.txt|query\.pw|\.env$|ts3server\.sqlitedb|ssh_host_rsa_key|ts3audiobot\.db|\.tar\.(xz|gz|zst)$|^vendor/teamspeak3-server/(logs|files)/' || true)
+          if [ -n "$bad" ]; then echo "❌ 疑似敏感文件被提交："; echo "$bad"; exit 1; fi
+          echo "✅ 未发现敏感文件"

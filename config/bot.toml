@@ -1,0 +1,109 @@
+#Starts the instance when the TS3AudioBot is launched.
+run = true
+
+[commands]
+
+# ─────────────────────────────────────────────────────────────
+#  点歌指令别名（拼音简写，让大家少打字）
+#
+#  两个必须知道的规则（都是读 TS3AudioBot 源码确认的）：
+#    ① 别名【值】必须以 ! 开头，否则会被当成一段普通字符串而不是命令；
+#    ② 想转发用户输入的参数，要用 (!param 0) —— 它会把「命令名之后的整段文字」
+#       原样交给目标命令。直接写 "!play" 是【不带参数】的 play（只会续播），
+#       这就是很多人配上别名却发现「点歌没反应」的原因。
+#
+#  别名【名字】默认只能是小写字母+数字（可空格分词）。
+#  上游的命名校验正则是 ^[a-z\d]+( [a-z\d]+)*$ —— 本包自带的机器人已经打了
+#  【P7 补丁】把它放宽到「任意语言的字母」，所以下面可以直接写中文别名。
+#  ⚠ 中文（以及任何含特殊字符）的别名，TOML 的 key **必须加引号**：  "点歌" = "..."
+#  ⚠ 如果你换成【官方原版】机器人，中文别名会在启动时被拒绝（只有一条日志警告，
+#    不影响其它功能）；这时把它们注释掉即可。补丁见 patch-kit/。
+#
+#  运行时也能改：  !alias add <名字> "!<命令>"     !alias list     !alias remove <名字>
+# ─────────────────────────────────────────────────────────────
+[commands.alias]
+# —— 点歌（最常用）——
+dian    = "!play (!param 0)"     # !dian 稻香
+dg      = "!play (!param 0)"
+gequ    = "!play (!param 0)"
+bo      = "!play (!param 0)"     # !bo 稻香
+# —— 播放控制 ——
+zan     = "!pause"               # 暂停 / 继续（切换）
+zt      = "!pause"
+jixu    = "!pause"
+ting    = "!stop"                # 停止并清空当前队列
+tz      = "!stop"
+xia     = "!next"                # 下一首
+shang   = "!previous"            # 上一首
+tiao    = "!seek (!param 0)"     # !tiao 90  跳到第 90 秒
+yin     = "!volume (!param 0)"   # !yin 50   音量 50
+# —— 当前曲目 / 队列 ——
+now     = "!song"
+lb      = "!list show"           # 看队列
+dui     = "!list queue"
+sui     = "!random on"           # 随机播放
+shun    = "!random off"          # 顺序播放
+danqu   = "!repeat one"          # 单曲循环
+quanbu  = "!repeat all"          # 列表循环
+# —— 其它 ——
+bz      = "!help"                # !bz 看全部命令
+
+# —— 中文别名（需要本包自带的 P7 机器人；key 必须带引号）——
+"点歌"   = "!play (!param 0)"
+"播放"   = "!play (!param 0)"
+"暂停"   = "!pause"
+"继续"   = "!pause"
+"停止"   = "!stop"
+"下一首" = "!next"
+"上一首" = "!previous"
+"当前"   = "!song"
+"队列"   = "!list show"
+"音量"   = "!volume (!param 0)"
+"随机"   = "!random on"
+"顺序"   = "!random off"
+"循环"   = "!repeat all"
+"单曲"   = "!repeat one"
+"帮助"   = "!help"
+
+[connect]
+#The server password. Leave empty for none.
+server_password = { pw = "", hashed = false, autohash = false }
+#The default channel password. Leave empty for none.
+channel_password = { pw = "", hashed = false, autohash = false }
+#Overrides the displayed version for the ts3 client. Leave empty for default.
+client_version = { build = "", platform = "", sign = "" }
+#The address, ip or nickname (and port; default: 9987) of the TeamSpeak3 server
+address = "127.0.0.1:9987"
+#Default channel when connecting. Use a channel path or "/<id>".
+#Examples: "Home/Lobby", "/5", "Home/Afk \\/ Not Here".
+channel = "/1"
+#The client badges. You can set a comma seperated string with max three GUID's. Here is a list: http://yat.qa/ressourcen/abzeichen-badges/
+badges = ""
+#Client nickname when connecting.
+name = "music/bot"
+
+[connect.identity]
+#||| 不要把这个 key 公开 |||  客户端身份私钥。
+# 留空 = 机器人首次启动时【自动生成一个新身份】并写回这里。
+# 所以本仓库里永远是空的，每台部署出来的机器身份都不一样。
+key = ""
+#The client identity offset determining the security level.
+offset = 0
+
+[reconnect]
+
+[audio]
+#When a new song starts the volume will be trimmed to between min and max.
+#When the current volume already is between min and max nothing will happen.
+#To completely or partially disable this feature, set min to 0 and/or max to 100.
+volume = { default = 50.0, min = 0.0, max = 100.0 }
+#Specifies the bitrate (in kbps) for sending audio.
+#Values between 8 and 98 are supported, more or less can work but without guarantees.
+#Reference values: 16 - very poor (~3KiB/s), 24 - poor (~4KiB/s), 32 - okay (~5KiB/s), 48 - good (~7KiB/s), 64 - very good (~9KiB/s), 96 - deluxe (~13KiB/s)
+bitrate = 98
+
+[playlists]
+
+[history]
+
+[events]

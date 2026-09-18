@@ -1,0 +1,10 @@
+[Unit]
+Description=Run TS3 music bot watchdog every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+Unit=ts3bot-watchdog.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,5 @@
+[Unit]
+Description=TS3 hot backup + push to offsite cold repository
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ts3-backup-push.sh

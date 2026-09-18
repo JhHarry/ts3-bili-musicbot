@@ -1,0 +1,12 @@
+[Unit]
+Description=TS3 boot-time service health check
+After=teamspeak3.service ts3audiobot.service bili-proxy.service
+Wants=teamspeak3.service ts3audiobot.service bili-proxy.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ts3-boot-check.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

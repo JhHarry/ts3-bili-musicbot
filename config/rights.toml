@@ -1,0 +1,56 @@
+# Rights declaration file for the music bot (权限声明，随包分发)
+# 所有人默认都能用的基础指令
+"+" = [
+	"cmd.help.*",
+	"cmd.pm",
+	"cmd.subscribe",
+	"cmd.unsubscribe",
+	"cmd.kickme.*",
+	"cmd.version",
+	"cmd.song",
+	"cmd.repeat",
+	"cmd.random",
+	"cmd.if",
+	"cmd.print",
+	"cmd.rng",
+	"cmd.eval",
+	"cmd.take",
+	"cmd.xecute",
+	"cmd.getmy.*",
+	"cmd.json.*",
+	"cmd.bot.use",
+	"cmd.rights.can",
+	# ↓ 点歌别名要用到：别名转发参数靠 (!param 0)，而这个内部命令本身也要授权，
+	#   否则普通用户用 !dian 稻香 会报 "Missing rights for cmd.param"
+	"cmd.param",
+]
+
+# 管理员：服务器管理员组(sgid=6) + 查询管理员组(sgid=2) + 本机
+[[rule]]
+	groupid = [ 2, 6 ]
+	ip = [ "127.0.0.1", "::1" ]
+	"+" = "*"
+
+# 点歌权限：任何人都可以用（不写 groupid/useruid 即对所有人生效）
+[[rule]]
+	"+" = [
+		"cmd.play",
+		"cmd.pause",
+		"cmd.stop",
+		"cmd.seek",
+		"cmd.volume",
+		"cmd.list.*",
+		"cmd.add",
+		"cmd.clear",
+		"cmd.previous",
+		"cmd.next",
+		"cmd.random.*",
+		"cmd.repeat.*",
+		"cmd.history.add",
+		"cmd.history.from",
+		"cmd.history.id",
+		"cmd.history.last",
+		"cmd.history.play",
+		"cmd.history.till",
+		"cmd.history.title",
+	]
