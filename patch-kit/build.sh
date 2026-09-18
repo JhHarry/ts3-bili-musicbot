@@ -12,7 +12,7 @@ export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 export LD_LIBRARY_PATH=/opt/ts3bot/private-libs/usr/lib/x86_64-linux-gnu
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 export NUGET_PACKAGES=/var/tmp/build/nuget
-cd /var/tmp/build/src
+cd /var/tmp/build/src || { echo "✗ /var/tmp/build/src 不存在"; exit 1; }
 echo "START $(date +%T)"
 dotnet publish TS3AudioBot/TS3AudioBot.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o /var/tmp/build/out
 echo "EXIT=$? $(date +%T)"

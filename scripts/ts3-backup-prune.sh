@@ -12,7 +12,7 @@ DIR="${1:-/var/backups/ts3-from-sh}"
 KEEP="${2:-7}"
 LOG=/var/log/ts3-backup-prune.log
 
-log() { echo "[$(date '+%F %T')] $*" ; }
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG" ; }
 
 mkdir -p "$DIR"
 cd "$DIR" || exit 1

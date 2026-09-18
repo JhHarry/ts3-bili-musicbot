@@ -59,7 +59,7 @@ else
 fi
 
 # ── 3. 本地保留策略（异地那份由对端自己管）
-cd /var/backups/ts3
+cd /var/backups/ts3 || { log "✗ 无法进入 /var/backups/ts3"; exit 1; }
 ls -1t *.tar.gz 2>/dev/null | grep -v '^latest-' | tail -n +$((KEEP_LOCAL+1)) | while read -r old; do
   rm -f "$old"; log "  清理本地旧备份: $old"
 done

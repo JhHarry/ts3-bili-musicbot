@@ -67,7 +67,7 @@ if [ -n "$IPS" ]; then
     echo "$IPS" | sed 's/^/       /'
     while read -r ip; do
         [ -n "$ip" ] || continue
-        grep -rlF "$ip" $(cat "$TXTFILE") 2>/dev/null | sed "s|^|       ($ip) |"
+        xargs -a "$TXTFILE" -r grep -lF "$ip" 2>/dev/null | sed "s|^|       ($ip) |"
     done <<< "$IPS"
 fi
 

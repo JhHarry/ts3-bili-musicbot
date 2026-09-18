@@ -181,34 +181,32 @@ echo "    公网 IP: $PUBIP"
 say "3/9 安装 TeamSpeak 3 服务端"
 TS3VER="${TS3VER:-3.13.7}"
 if [ ! -x "$TS3_DIR/ts3server" ]; then
-    if [ -d "$DIR/vendor/teamspeak3-server" ]; then
-        # 目录形态（本仓库的默认形态）：直接拷过去
-        rm -rf /tmp/ts3src && mkdir -p /tmp/ts3src
-        cp -a "$DIR/vendor/teamspeak3-server/." /tmp/ts3src/
-        TMPX=/tmp/ts3src; SRC="$TMPX"
-        rm -rf "$TS3_DIR"
-        mv "$SRC" "$TS3_DIR"
-        rm -rf /tmp/ts3src
-        [ -x "$TS3_DIR/ts3server" ] || { echo "    ✗ TS3 拷贝失败：$TS3_DIR/ts3server 不存在"; exit 1; }
-        echo "    TS3 已就位: $(ls "$TS3_DIR" | wc -l) 个条目"
-    elif [ -f "$DIR/vendor/teamspeak3-server.tar.bz2" ]; then
-        cp "$DIR/vendor/teamspeak3-server.tar.bz2" /tmp/ts3.tar.bz2
-    else
-        curl -sL -o /tmp/ts3.tar.bz2 \
-          "https://files.teamspeak-services.com/releases/server/${TS3VER}/teamspeak3-server_linux_amd64-${TS3VER}.tar.bz2"
-    fi
-    # 先清掉可能的旧版本，再解包到临时目录（避免污染 /opt）
+    # 先清掉可能的旧版本，再装到临时目录后整体搬过去（避免污染 /opt）
     rm -rf "$TS3_DIR"
-    TMPX=$(mktemp -d /opt/.ts3x.XXXXXX)
-    tar xjf /tmp/ts3.tar.bz2 -C "$TMPX"
-    # 兼容两种包结构：带一层目录（teamspeak3-server/ 或 *_linux_amd64/）或直接铺开
-    if   [ -d "$TMPX/teamspeak3-server" ]; then SRC="$TMPX/teamspeak3-server"
-    elif [ -d "$TMPX/teamspeak3-server_linux_amd64" ]; then SRC="$TMPX/teamspeak3-server_linux_amd64"
-    else SRC="$TMPX"; fi
-    mv "$SRC" "$TS3_DIR"
-    rm -rf "$TMPX"
-    [ -x "$TS3_DIR/ts3server" ] || { echo "    ✗ TS3 解包失败：$TS3_DIR/ts3server 不存在"; exit 1; }
-    echo "    TS3 已解包: $(ls "$TS3_DIR" | wc -l) 个条目"
+    if [ -d "$DIR/vendor/teamspeak3-server" ]; then
+        # ① 目录形态（本仓库的默认形态）：直接拷
+        TMPX=$(mktemp -d /opt/.ts3x.XXXXXX)
+        cp -a "$DIR/vendor/teamspeak3-server/." "$TMPX/"
+        mv "$TMPX" "$TS3_DIR"
+    else
+        # ② tar.bz2 形态：优先用包内的，否则在线下载
+        if [ -f "$DIR/vendor/teamspeak3-server.tar.bz2" ]; then
+            cp "$DIR/vendor/teamspeak3-server.tar.bz2" /tmp/ts3.tar.bz2
+        else
+            curl -sL -o /tmp/ts3.tar.bz2 \
+              "https://files.teamspeak-services.com/releases/server/${TS3VER}/teamspeak3-server_linux_amd64-${TS3VER}.tar.bz2"
+        fi
+        TMPX=$(mktemp -d /opt/.ts3x.XXXXXX)
+        tar xjf /tmp/ts3.tar.bz2 -C "$TMPX"
+        # 兼容两种包结构：带一层目录（teamspeak3-server/ 或 *_linux_amd64/）或直接铺开
+        if   [ -d "$TMPX/teamspeak3-server" ]; then SRC="$TMPX/teamspeak3-server"
+        elif [ -d "$TMPX/teamspeak3-server_linux_amd64" ]; then SRC="$TMPX/teamspeak3-server_linux_amd64"
+        else SRC="$TMPX"; fi
+        mv "$SRC" "$TS3_DIR"
+        rm -rf "$TMPX" /tmp/ts3.tar.bz2
+    fi
+    [ -x "$TS3_DIR/ts3server" ] || { echo "    ✗ TS3 安装失败：$TS3_DIR/ts3server 不存在"; exit 1; }
+    echo "    TS3 已就位: $(ls "$TS3_DIR" | wc -l) 个条目"
 fi
 id ts3server >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin ts3server
 touch "$TS3_DIR/.ts3server_license_accepted"
