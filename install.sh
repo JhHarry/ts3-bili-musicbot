@@ -258,6 +258,9 @@ for i in $(seq 1 14); do
     if [ "$i" -le 8 ]; then OUT=$(read_ts3_output); else OUT=$(read_ts3_output_wide); fi
     [ -n "$ADMIN_TOKEN" ] || ADMIN_TOKEN=$(printf '%s\n' "$OUT" | grep -oP 'token=\K\S+' | tail -1)
 
+    if [ -n "${TS3_DEBUG:-}" ]; then
+        echo "    [dbg] 第 $i 次: since=[$TS3_START_TS] journal行数=$(printf '%s' "$OUT" | wc -l) pw候选=$(printf '%s\n' "$OUT" | grep -oP 'password\s*=\s*"\K[^"]+' | tr '\n' ',') token候选=$(printf '%s\n' "$OUT" | grep -oP 'token=\K\S+' | tr '\n' ',')" >&2
+    fi
     if [ -z "$QUERY_PASS" ]; then
         CAND=$(printf '%s\n' "$OUT" | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
         # 只在候选变化时试登录，避免连续失败登录触发封禁
