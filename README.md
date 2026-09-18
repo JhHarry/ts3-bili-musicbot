@@ -20,7 +20,7 @@
 | 权限 | root 或可免密 sudo |
 | 磁盘 | 可用空间 ≥ 2 GB |
 | 内存 | ≥ 1 GB（不足 900 MB 时脚本会自动创建 2 GB swap） |
-| 网络 | 可访问 apt 源；首次安装需可访问 GitHub（下载约 26 MB，仅一次） |
+| 网络 | 可访问 apt 源（首次需下载约 150 MB 依赖）；需可访问 GitHub（下载机器人约 26 MB，仅一次） |
 
 安装脚本会自动安装所需系统依赖，无需预先准备。
 
@@ -34,7 +34,10 @@ cd ts3-bili-musicbot
 sudo bash install.sh
 ```
 
-安装过程中会询问是否安装 B站点歌机器人：
+安装脚本全程自动执行，**全新机器约需 15 分钟**（其中约 10 分钟用于下载系统依赖，
+`ffmpeg` 及其依赖约 150 MB）。下载期间无明显输出属正常现象，请耐心等待。
+
+过程中会询问是否安装 B站点歌机器人：
 
 ```
 是否安装 B站点歌机器人？[Y/n]
@@ -253,13 +256,33 @@ TS3AudioBot 上游遗留的内存泄漏（播放时约 4 MB/分钟，空闲约 1
 代理内置选源逻辑会优先选择原版、高码率音源，并排除翻唱、现场、伴奏与
 MV 音轨。若结果仍不符合预期，建议直接提供 BV 号或链接。
 
-**Q10. 安装失败，提示缺少某条命令**
+**Q10. 安装停在「1/9 安装系统依赖」很久不动**
+
+属正常现象。全新机器没有 apt 缓存，需要下载 `ffmpeg` 及其依赖约 150 MB。
+可另开一个终端确认进度：
+
+```bash
+ps -eo pid,etime,cmd | grep apt-get        # 看 apt 是否在跑
+ls -l /var/cache/apt/archives/partial/     # 看正在下载的包
+```
+
+**Q11. 安装失败，提示缺少某条命令**
 
 安装脚本在安装依赖后会执行前置命令自检，缺少的命令会明确列出。按提示补齐即可：
 
 ```bash
 sudo apt-get update && sudo apt-get install -y <包名>
 ```
+
+**Q12. 安装完成，但提示「未取到 ServerQuery 密码，跳过服务器属性校正」**
+
+表示 TeamSpeak 启动异常缓慢，凭据自动抓取未成功。可与下方命令手动校正：
+
+```bash
+sudo TS3_PASS=$(sudo cat /opt/ts3bot/query.pw) python3 /opt/ts3bot/ts3-serverset.py
+```
+
+若 `/opt/ts3bot/query.pw` 不存在，密码可从 `sudo journalctl -u teamspeak3 | grep 'password='` 获取。
 
 更多故障处理见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。
 

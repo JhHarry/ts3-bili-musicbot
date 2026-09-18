@@ -50,9 +50,12 @@
 | TeamSpeak 3 安装后目录为空 | 清理旧版本的 `rm -rf` 位于解包之后，误删刚解出的文件 | 调整为先清理后安装 |
 | `Failed to determine credentials for user '__RUN_USER__'` | systemd 单元的占位符仅部分回填 | 全量回填并增加残留检查 |
 | 机器人无法启动，提示 `Failed to load library libopus` | 仅安装 `libopus0`，而 .NET 需要不带版本号的 `libopus.so`（仅 `libopus-dev` 提供） | 依赖列表加入 `libopus-dev` |
+| **TeamSpeak 3 起不来**，服务以 `status=217/USER` 反复失败 | 单元中的 `User=` 占位符要到第 7 步才回填，而服务在第 3 步就已安装并启动 | 安装单元后、**首次启动前**就地回填 `User=`／`Group=`，并断言无残留 |
 | 服务器属性校正被跳过 | TeamSpeak 3.13.7 起凭据仅输出至 stdout，不再写入 `logs/` 目录 | 改为同时读取日志文件与 `journalctl` |
-| 抓取到上一次安装的旧密码 | `journalctl` 保留历史记录，未限定时间范围 | 查询加入 `--since` 时间窗口 |
-| 部署信息中的管理员令牌缺失 | 与上一条同源 | 同上，并延长轮询至 50 秒（令牌生成晚于密码约 30 秒） |
+| 抓取到上一次安装的旧密码 | `journalctl` 保留历史记录，未限定时间范围 | 查询加入 `--since` 时间窗口；并优先 `systemctl reset-failed` 清除失败计数 |
+| 数据库已存在时不再打印密码 | 重装场景下 TeamSpeak 不会重复输出凭据 | 候选密码必须**实际登录 ServerQuery 成功**才采信；失败则回退读取已保存的 `query.pw` |
+| TeamSpeak 启动缓慢时抓取失败 | 服务因 systemd 启动退避可能延迟数分钟才就绪 | 启动后先探测 ServerQuery 端口（上限 5 分钟，就绪即继续），再进行凭据抓取 |
+| 安装脚本中途终止于 sed 报错 | 回填命令用 `\|` 作分隔符，与正则中的 `(User\|Group)` 冲突 | 改用 `#` 作分隔符 |
 
 **导致功能异常的问题**
 
@@ -86,11 +89,22 @@
 
 ### 验证情况
 
-* 在全新的 Ubuntu 24.04 x86_64 实例上完成完整安装测试：
-  依赖安装、二进制下载、服务启动、端口监听、备份任务均正常。
-* 点歌链路实测：请求 `/s/稻香` 返回可播放的音频流。
+* **全新机器端到端验证**：在一台刚创建的 Ubuntu 24.04 x86_64 实例上，仅执行
+  `git clone` + `sudo bash install.sh`，无任何参数或环境变量干预，全流程自动完成。
+  确认凭据被抓取并通过登录验证、服务器属性被校正、全部服务处于 active 与 enabled、
+  9 个频道创建完成、机器人正常入频道、`TS3-服务器信息.txt` 正常生成。
+* 点歌链路实测：请求 `/s/稻香`、`/s/晴天` 均返回 `HTTP 200 audio/mp4` 可播放音频流。
 * 二维码生成器与 `qrencode` 逐位比对，并通过 `zbarimg` 解码回归（40 组用例）。
 * 全部 shell 脚本通过 `bash -n` 与 ShellCheck，Python 脚本通过 `py_compile`。
+
+### 已知限制
+
+* 全新机器首次安装约需 **15 分钟**，其中约 10 分钟用于 `apt` 下载依赖
+  （`ffmpeg` 及其依赖约 150 MB，新机器无缓存）。属于正常现象，并非卡住。
+* 若 TeamSpeak 服务端因环境原因启动异常缓慢，凭据自动抓取可能失败。
+  此时安装脚本会给出提示，可手动补救：
+  `sudo TS3_PASS=$(sudo cat /opt/ts3bot/query.pw) python3 /opt/ts3bot/ts3-serverset.py`
+* 搜索功能受 B站接口限流影响：连续快速搜索会返回 HTTP 412，稍后重试即可。
 
 ---
 
