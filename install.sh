@@ -215,6 +215,9 @@ chown -R ts3server:ts3server "$TS3_DIR"
 install -m 644 "$DIR/systemd/teamspeak3.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable teamspeak3 >/dev/null 2>&1
+# ★ 记下启动时刻：journalctl 里会留着【历次安装】的历史，
+#   不限定时间范围就会 grep 到上一次的旧密码，然后误以为抓到了、不再等新密码。
+TS3_START_TS=$(date '+%Y-%m-%d %H:%M:%S')
 systemctl restart teamspeak3
 sleep 12
 
@@ -223,7 +226,7 @@ sleep 12
 #   所以必须两处都读，只读日志文件会一个都抓不到 —— 那会导致下面的服务器属性校正被整段跳过。
 read_ts3_output() {
     { for f in "$TS3_DIR"/logs/ts3server_*.log; do [ -f "$f" ] && cat "$f"; done
-      journalctl -u teamspeak3 --no-pager -n 800 2>/dev/null
+      journalctl -u teamspeak3 --no-pager --since "${TS3_START_TS:-2 minutes ago}" -n 800 2>/dev/null
     } 2>/dev/null
 }
 
@@ -455,7 +458,25 @@ QPW="$QUERY_PASS"
 if [ -n "$QPW" ] && [ -f "$INSTALL_DIR/ts3-serverset.py" ]; then
     TS3_HOST=127.0.0.1 TS3_PASS="$QPW" \
     SV_NAME="$SERVER_NAME" SV_PW="$SERVER_PW" SV_SECLEVEL="$SECLEVEL" \
-      python3 "$INSTALL_DIR/ts3-serverset.py" || echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
+      python3 "$INSTALL_DIR/ts3-serverset.py" && QPW_OK=1 || QPW_OK=0
+    # 万一密码不对（例如抓到了上一次安装的），用「本次启动之后」的 journal 再取一次重试
+    if [ "$QPW_OK" = "0" ]; then
+        QPW2=$(journalctl -u teamspeak3 --no-pager --since "${TS3_START_TS:-5 minutes ago}" 2>/dev/null \
+               | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
+        if [ -n "$QPW2" ] && [ "$QPW2" != "$QPW" ]; then
+            echo "    （用最新抓到的密码重试一次…）"
+            sleep 3
+            TS3_HOST=127.0.0.1 TS3_PASS="$QPW2" \
+            SV_NAME="$SERVER_NAME" SV_PW="$SERVER_PW" SV_SECLEVEL="$SECLEVEL" \
+              python3 "$INSTALL_DIR/ts3-serverset.py" && QPW="$QPW2" || echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
+        else
+            echo "    ⚠ 服务器属性校正失败（可稍后手动执行 ts3-serverset.py）"
+        fi
+    fi
+    # 校正成功后，把真正生效的密码写回凭据文件
+    if [ -f /root/ts3-credentials.txt ] && [ -n "${QPW2:-}" ] && [ "$QPW" = "$QPW2" ]; then
+        sed -i "s|^  ServerQuery 密码: .*|  ServerQuery 密码: $QPW|" /root/ts3-credentials.txt 2>/dev/null || true
+    fi
 else
     echo "    ○ 未取到 ServerQuery 密码，跳过服务器属性校正"
     echo "      （可稍后手动： TS3_PASS=\$(cat /opt/ts3bot/query.pw) python3 $INSTALL_DIR/ts3-serverset.py）"
