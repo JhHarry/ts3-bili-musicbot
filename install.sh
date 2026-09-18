@@ -245,6 +245,7 @@ fi
 
 # 持久化保存：文档和排错手册都假设能 cat 到它
 if [ -n "$QUERY_PASS" ]; then
+    mkdir -p "$INSTALL_DIR"
     ( umask 077; printf '%s' "$QUERY_PASS" > "$INSTALL_DIR/query.pw" )
     chown "$RUN_USER:$RUN_USER" "$INSTALL_DIR/query.pw" 2>/dev/null || true
 fi
@@ -521,6 +522,122 @@ elif [ "${BILI_LOGIN:-0}" = "1" ]; then
 else
     echo "    ○ 未登录 B站（不登录也能点歌，只是音源档位可能偏低）"
     echo "      想登录就跑：sudo -u $RUN_USER python3 $INSTALL_DIR/bili_login.py"
+fi
+
+# ---------- 8.8 输出「部署信息」文档 ----------
+# 装完之后手边要有一份能直接照着用的说明：连接地址 / 管理员令牌 / 点歌指令。
+# 同时写到两处：脚本所在目录（你执行 install.sh 的地方）+ /root/（保底能找到）。
+write_info_txt() {
+    OUT="$1"
+    {
+        echo "╔══════════════════════════════════════════════════════════╗"
+        echo "║        TeamSpeak 3 服务器 · 部署信息                      ║"
+        echo "╚══════════════════════════════════════════════════════════╝"
+        echo
+        echo "生成时间：$(date '+%F %T %Z')"
+        echo "主机名称：$(hostname)"
+        echo
+        echo "━━━ 一、连接地址（把这个发给朋友）━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo
+        echo "    地址　　　：$PUBIP"
+        echo "    语音端口　：$TS3_PORT  (UDP，客户端默认就是它，不用手填)"
+        echo "    服务器名称：$SERVER_NAME"
+        if [ -n "$SERVER_PW" ]; then
+            echo "    服务器密码：$SERVER_PW"
+        else
+            echo "    服务器密码：无（任何人可直接连接）"
+        fi
+        echo
+        if [ "$WITH_BOT" = "1" ]; then
+            echo "    机器人昵称：$BOT_NAME"
+        fi
+        echo
+        echo "━━━ 二、管理员令牌 ★ 最重要 ★ ━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo
+        if [ -n "$ADMIN_TOKEN" ]; then
+            echo "    $ADMIN_TOKEN"
+        else
+            echo "    （自动抓取失败，手动找： sudo journalctl -u teamspeak3 | grep token= ）"
+        fi
+        echo
+        echo "    用法："
+        echo "      1) 用上面的地址连进服务器"
+        echo "      2) 菜单 → 权限 → 使用激活密钥（Use Privilege Key）"
+        echo "      3) 把上面那串令牌粘进去 → 确定"
+        echo "      4) 你的身份就变成管理员了"
+        echo
+        if [ "$WITH_BOT" = "1" ]; then
+            echo "━━━ 三、点歌指令（在任意频道直接发消息）━━━━━━━━━━━━━━━━━"
+            echo
+            echo "  ▸ 点歌"
+            echo "      !play 稻香              完整写法"
+            echo "      !点歌 稻香              中文别名"
+            echo "      !dian 稻香  !bo 稻香    拼音简写"
+            echo "      !play 周杰伦 稻香       多个词自动合并成搜索词"
+            echo "      !play BV1G88y6xEQV      按 B站视频号"
+            echo "      !play https://b23.tv/xx 直接粘链接"
+            echo
+            echo "  ▸ 播放控制"
+            echo "      !暂停/继续 !zan      !停止   !ting"
+            echo "      !下一首    !xia      !上一首 !shang"
+            echo "      !当前      !now      !队列   !lb"
+            echo "      !音量 50   !yin 50   !跳转 90 !tiao 90"
+            echo
+            echo "  ▸ 播放模式"
+            echo "      !单曲 !danqu   单曲循环     !循环 !quanbu  列表循环"
+            echo "      !随机 !sui     随机播放     !顺序 !shun    顺序播放"
+            echo
+            echo "  ▸ !bz   查看全部命令（!help 的简写）"
+            echo
+        else
+            echo "━━━ 三、点歌机器人：本次未安装 ━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo
+            echo "    想补装（已装的部分会自动跳过）："
+            echo "      cd $(pwd) && sudo WITH_BOT=1 bash install.sh"
+            echo
+        fi
+        echo "━━━ 四、管理凭据（保密，别外发）━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo
+        echo "    ServerQuery 密码 : ${QUERY_PASS:-（未抓到）}"
+        echo "    ServerQuery 端口 : $QUERY_PORT  (TCP，只建议走 SSH 隧道访问)"
+        echo "    隧道示例         : ssh -L $QUERY_PORT:127.0.0.1:$QUERY_PORT <用户>@$PUBIP"
+        echo
+        echo "━━━ 五、常用运维命令 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo
+        echo "    sudo ts3-backup.sh                 立刻备份一次（不停服）"
+        echo "    sudo ts3-restore.sh <备份包>        还原（默认 dry-run）"
+        echo "    sudo ts3-bot.sh status             机器人状态"
+        echo "    sudo bash /usr/local/bin/audit.sh 1 体检"
+        echo "    journalctl -u teamspeak3 -n 50     看 TS3 日志"
+        if [ "$WITH_BOT" = "1" ]; then
+            echo "    journalctl -u ts3audiobot -n 50    看机器人日志"
+        fi
+        echo
+        echo "━━━ 六、别忘了开防火墙 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo
+        echo "    UDP  $TS3_PORT    ← 语音。协议一定要选 UDP！选成 TCP 会完全连不上"
+        echo "    TCP  30033      ← 文件传输（头像 / 频道文件）"
+        echo "    ✗ 不要开放 TCP $QUERY_PORT（会被爆破）"
+        echo
+        echo "──────────────────────────────────────────────────────────"
+        echo "  文档位置：$OUT"
+        echo "  取回本地：scp <用户>@$PUBIP:$OUT ./"
+        echo "──────────────────────────────────────────────────────────"
+    } > "$OUT" 2>/dev/null || return 1
+    chmod 644 "$OUT" 2>/dev/null || true
+    return 0
+}
+
+INFO_BASE="TS3-服务器信息.txt"
+INFO_DIR_TXT="$DIR/$INFO_BASE"
+INFO_ROOT_TXT="/root/$INFO_BASE"
+WROTE=""
+write_info_txt "$INFO_DIR_TXT" && WROTE="$INFO_DIR_TXT"
+write_info_txt "$INFO_ROOT_TXT" && WROTE="${WROTE:+$WROTE 与 }$INFO_ROOT_TXT"
+echo
+if [ -n "$WROTE" ]; then
+    echo "    📄 部署信息已写好：$WROTE"
+    echo "       内容：连接地址 / 管理员令牌 / 点歌指令 / 管理凭据 / 运维命令"
 fi
 
 # ---------- 9. 完成 ----------
