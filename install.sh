@@ -213,6 +213,18 @@ touch "$TS3_DIR/.ts3server_license_accepted"
 chown -R ts3server:ts3server "$TS3_DIR"
 
 install -m 644 "$DIR/systemd/teamspeak3.service" /etc/systemd/system/
+
+# ★★★ 必须在【第一次启动之前】把 User 占位符回填掉 ★★★
+# 打包时为了脱敏，把单元里的 User=/Group= 换成了 __RUN_USER__。
+# 如果这里不换回来，systemd 会报「Failed to determine user credentials」，
+# 服务以 status=217/USER 反复失败重启 —— TS3 永远起不来，凭据也就抓不到。
+# （占位符的通用回填在 7/9 步，但那已经太晚了。）
+sed -i -E "s|^(User|Group)=__RUN_USER__|\1=ts3server|" /etc/systemd/system/teamspeak3.service
+if grep -q '__RUN_USER__' /etc/systemd/system/teamspeak3.service; then
+    echo "    ✗ teamspeak3.service 仍残留 __RUN_USER__ 占位符"; exit 1
+fi
+echo "    teamspeak3.service 运行用户: $(grep -m1 '^User=' /etc/systemd/system/teamspeak3.service)"
+
 systemctl daemon-reload
 systemctl enable teamspeak3 >/dev/null 2>&1
 # ★ 清掉可能存在的启动失败计数。systemd 对反复失败的服务会做退避，
