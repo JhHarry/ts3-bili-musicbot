@@ -219,15 +219,49 @@ systemctl restart teamspeak3
 sleep 12
 
 # 抓取首次生成的 ServerQuery 密码与管理员令牌
+# ⚠ TS3 3.13.7 起这两个【不再写进 logs/ 文件】，而是打到 stdout（systemd 收进 journald）。
+#   所以必须两处都读，只读日志文件会一个都抓不到 —— 那会导致下面的服务器属性校正被整段跳过。
+read_ts3_output() {
+    { for f in "$TS3_DIR"/logs/ts3server_*.log; do [ -f "$f" ] && cat "$f"; done
+      journalctl -u teamspeak3 --no-pager -n 800 2>/dev/null
+    } 2>/dev/null
+}
+
 QUERY_PASS=""; ADMIN_TOKEN=""
-for _ in 1 2 3 4 5; do
-    LOG=$(ls -t "$TS3_DIR"/logs/ts3server_*.log 2>/dev/null | head -1)
-    [ -n "$LOG" ] || { sleep 4; continue; }
-    QUERY_PASS=$(grep -oP 'password\s*=\s*"\K[^"]+' "$LOG" 2>/dev/null | head -1)
-    ADMIN_TOKEN=$(grep -oP 'token=\K\S+' "$LOG" 2>/dev/null | head -1)
-    [ -n "$QUERY_PASS" ] && break
-    sleep 4
+for _ in $(seq 1 10); do
+    OUT=$(read_ts3_output)
+    [ -n "$QUERY_PASS" ] || QUERY_PASS=$(printf '%s\n' "$OUT" | grep -oP 'password\s*=\s*"\K[^"]+' | tail -1)
+    [ -n "$ADMIN_TOKEN" ] || ADMIN_TOKEN=$(printf '%s\n' "$OUT" | grep -oP 'token=\K\S+' | tail -1)
+    # 令牌是虚拟服务器建好之后才生成的，比密码晚约 20~30 秒
+    if [ -n "$QUERY_PASS" ] && [ -n "$ADMIN_TOKEN" ]; then break; fi
+    sleep 5
 done
+
+# 重装场景：数据库里已经有密码了，不会再打印一次 → 沿用上次保存的
+if [ -z "$QUERY_PASS" ] && [ -f "$INSTALL_DIR/query.pw" ]; then
+    QUERY_PASS=$(cat "$INSTALL_DIR/query.pw")
+    echo "    （沿用已保存的 ServerQuery 密码）"
+fi
+
+# 持久化保存：文档和排错手册都假设能 cat 到它
+if [ -n "$QUERY_PASS" ]; then
+    ( umask 077; printf '%s' "$QUERY_PASS" > "$INSTALL_DIR/query.pw" )
+    chown "$RUN_USER:$RUN_USER" "$INSTALL_DIR/query.pw" 2>/dev/null || true
+fi
+if [ -n "$QUERY_PASS" ] || [ -n "$ADMIN_TOKEN" ]; then
+    ( umask 077; {
+        echo "TeamSpeak 3 凭据  ($(date '+%F %T'))"
+        echo "  连接地址       : ${PUBIP:-?}"
+        echo "  ServerQuery 密码: ${QUERY_PASS:-（未抓到）}"
+        echo "  管理员令牌      : ${ADMIN_TOKEN:-（未抓到）}"
+        echo
+        echo "管理员令牌用法：TS3 客户端 → 权限 → 使用激活密钥，粘进去即可获得管理员组"
+      } > /root/ts3-credentials.txt )
+    SAVED="/root/ts3-credentials.txt"
+    [ -f "$INSTALL_DIR/query.pw" ] && SAVED="$SAVED 与 $INSTALL_DIR/query.pw"
+    echo "    凭据已保存: $SAVED"
+fi
+
 echo "    ServerQuery 密码: ${QUERY_PASS:-（未抓到，请查看 $TS3_DIR/logs）}"
 
 if [ "$WITH_BOT" = "1" ]; then
@@ -540,7 +574,7 @@ $(if [ "$WITH_BOT" = "1" ]; then echo "  │  机器人开关 : ts3-bot.sh start
   └───────────────────────────────────────────
 
   想自己改机器人源码？见 patch-kit/README-patch.md
-  （重编译工具 + 4 处补丁，含 75 秒增量编译脚本）
+  （重编译工具 + 7 处补丁，含 75 秒增量编译脚本）
 EOF
 
 if [ "$WITH_BOT" = "0" ]; then
